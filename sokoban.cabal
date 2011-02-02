@@ -49,7 +49,7 @@ Executable sokoban
   Hs-source-dirs: src  
   -- Packages needed in order to build this package.
   Build-depends: base >= 4, array, haskell98      
-  
+  Ghc-options: -fglasgow-exts
   -- Modules not exported by this package.
   -- Other-modules:       
   
