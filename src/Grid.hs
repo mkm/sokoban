@@ -1,23 +1,28 @@
 module Grid where
 
 import Prelude hiding (Left, Right)
-import Data.Array.IArray (Array, array, assocs, inRange, bounds , (!))
-import Data.List (find)
-import Data.Maybe (fromJust, mapMaybe)
+import Data.Array.IArray (Array, array, assocs, inRange, bounds , (!), (//))
+import Data.List (find, groupBy, sortBy)
+import Data.Maybe (fromJust, mapMaybe, isJust)
 
+import Generic
 import Graph
 import Set
 
 data Tile = Empty | Solid | Box | FreeTarget | OccupiedTarget
-          deriving (Show, Read, Eq)
+            deriving (Show, Eq)
 
 type Pos = (Int, Int)
 type PosDelta = (Int, Int)
 
 data Grid = Grid (Array Pos Tile) Pos 
-          deriving (Show, Read, Eq)
+            deriving (Show, Eq)
 
 data StateInfo = StateInfo (Set Pos) Pos
+                 deriving (Show, Eq)
+
+data Direction = Up | Left | Down | Right
+                 deriving (Show, Enum, Bounded)
 
 charToTile :: Char -> Tile
 charToTile '.' = Empty
@@ -26,6 +31,13 @@ charToTile '*' = Box
 charToTile 'o' = FreeTarget
 charToTile '¤' = OccupiedTarget
 charToTile '$' = Empty --Player
+
+tileToChar :: Tile -> Char
+tileToChar Empty = '.'
+tileToChar Solid = '#'
+tileToChar Box = '*'
+tileToChar FreeTarget = 'o'
+tileToChar OccupiedTarget = '¤'
 
 fromString :: String -> Grid
 fromString src = Grid gridArray playerPos
@@ -38,6 +50,15 @@ fromString src = Grid gridArray playerPos
       tilePairs = map (\(i, c) -> (i, charToTile c)) charPairs
       gridArray = array ((1, 1), (colCount, rowCount)) tilePairs
 
+toString :: Grid -> String
+toString (Grid gridArray pos) = unlines chars
+    where
+      tilePairs = assocs gridArray
+      charPairs = map (\(i, t) -> (i, tileToChar t)) tilePairs
+      charPairsWithPlayer = applyWhere ((pos ==) . fst) (\(pos', _) -> (pos', '$')) charPairs
+      srcLines = findGroups (\((_, y1), _) ((_, y2), _) -> y1 == y2) charPairsWithPlayer
+      chars = map (map snd) $ sortBy (\(((_, y1), _):_) (((_, y2), _):_) -> compare y1 y2) srcLines
+
 getStateInfo :: Grid -> StateInfo
 getStateInfo (Grid a p) = StateInfo (Set.fromList boxPositions) p
     where
@@ -48,25 +69,70 @@ getStateInfo (Grid a p) = StateInfo (Set.fromList boxPositions) p
             boxFilter (pos, OccupiedTarget) = Just pos
             boxFilter _ = Nothing
 
-toGraph :: Grid -> Graph StateInfo
-toGraph grid = buildGraph grid $ Graph.new $ getStateInfo grid
+toGraph :: Grid -> Graph StateInfo Direction
+toGraph grid = buildGraph grid startGraph startId
     where
-      buildGraph grid graph = undefined
+      (startGraph, startId) = Graph.new $ getStateInfo grid
+      buildGraph grid graph currentId = undefined
+          where
+            newGrids = filter (not . flip containsData graph . getStateInfo . snd) $ nextGrids grid
+            (newGraph, newIdsWithDirs) = undefined --foldr folder graph newGrids
+            folder (dir, grid) (accGraph, accIds) =
+                case Graph.insertState (getStateInfo grid) accGraph of
+                  (accGraph', id) -> (accGraph', (id, dir) : accIds)
+            -- todo: generate transitions, clean up stuff and make things work.
 
-nextGrids :: Grid -> Set Grid
-nextGrids grid = undefined
+
+nextGrids :: Grid -> [(Direction, Grid)]
+nextGrids grid = mapMaybe (\dir -> move dir grid >>= \x -> return (dir, x)) [minBound .. maxBound] -- try all directions
 
 move :: Direction -> Grid -> Maybe Grid
-move dir grid = undefined      
+move dir (Grid gridArray pos) = do
+  let newPos = posAdd pos $ dirDelta dir
+  tile <- getTile newPos gridArray
+  case tile of
+    Empty -> Just $ Grid gridArray newPos
+    Solid -> Nothing
+    Box ->
+        do
+          newGridArray <- moveBox newPos gridArray
+          Just $ Grid newGridArray newPos
+    FreeTarget -> Just $ Grid gridArray newPos
+    OccupiedTarget ->
+        do
+          newGridArray <- moveBox newPos gridArray
+          Just $ Grid newGridArray newPos
+    where
+      moveBox pos gridArray =
+          do
+            let newPos = posAdd pos $ dirDelta dir
+            tile <- getTile newPos gridArray
+            case tile of
+              Empty -> Just $ toggleBox newPos $ toggleBox pos gridArray
+              Solid -> Nothing
+              Box -> Nothing
+              FreeTarget -> Just $ toggleBox newPos $ toggleBox pos gridArray
+              OccupiedTarget -> Nothing
+  
+toggleBox :: Pos -> Array Pos Tile -> Array Pos Tile
+toggleBox pos gridArray =
+    case getTile pos gridArray of
+      Nothing -> gridArray
+      Just tile -> gridArray // [(pos, newTile tile)]
+    where
+      newTile Empty = Box
+      newTile Solid = Solid
+      newTile Box = Empty
+      newTile FreeTarget = OccupiedTarget
+      newTile OccupiedTarget = FreeTarget
 
 isLegal :: Direction -> Grid -> Bool
-isLegal dir (Grid gridArray pos) = undefined -- gridArray ! newPos 
-    where
-      newPos = posAdd pos $ dirDelta dir
+isLegal dir grid = isJust $ move dir grid 
 
 getTile :: Pos -> Array Pos Tile -> Maybe Tile
 getTile pos gridArray
         | inRange (bounds gridArray) pos = Just $ gridArray ! pos
+        | otherwise = Nothing
 
 dirDelta :: Direction -> PosDelta
 dirDelta Up = (0, -1)
@@ -76,3 +142,4 @@ dirDelta Right = (1, 0)
 
 posAdd :: Pos -> PosDelta -> Pos
 posAdd (x, y) (dx, dy) = (x + dx, y + dy)
+
