@@ -14,10 +14,16 @@ main = do
 
 loop grid = do
   printGrid grid
-  dir <- getAction
-  case move dir grid of
-    Nothing -> loop grid
-    Just newGrid -> loop newGrid
+  case isAccepting grid of
+    False ->
+        do
+          dir <- getAction
+          case move dir grid of
+            Nothing -> loop grid
+            Just newGrid -> loop newGrid
+    True -> win
+
+win = putStrLn "You have won"
 
 getAction = do
   cmd <- getLine

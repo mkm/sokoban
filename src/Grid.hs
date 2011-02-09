@@ -1,7 +1,7 @@
 module Grid where
 
 import Prelude hiding (Left, Right)
-import Data.Array.IArray (Array, array, assocs, inRange, bounds , (!), (//))
+import Data.Array.IArray (Array, array, assocs, elems, inRange, bounds , (!), (//))
 import Data.List (find, groupBy, sortBy)
 import Data.Maybe (fromJust, mapMaybe, isJust)
 
@@ -9,7 +9,7 @@ import Generic
 import Graph
 import Set
 
-data Tile = Empty | Solid | Box | FreeTarget | OccupiedTarget
+data Tile = Solid | Empty Bool | Target Bool
             deriving (Show, Eq)
 
 type Pos = (Int, Int)
@@ -25,19 +25,19 @@ data Direction = Up | Left | Down | Right
                  deriving (Show, Enum, Bounded)
 
 charToTile :: Char -> Tile
-charToTile '.' = Empty
 charToTile '#' = Solid
-charToTile '*' = Box
-charToTile 'o' = FreeTarget
-charToTile '¤' = OccupiedTarget
-charToTile '$' = Empty --Player
+charToTile '.' = Empty False
+charToTile '*' = Empty True
+charToTile 'o' = Target False
+charToTile '¤' = Target True
+charToTile '$' = Empty False --Player
 
 tileToChar :: Tile -> Char
-tileToChar Empty = '.'
 tileToChar Solid = '#'
-tileToChar Box = '*'
-tileToChar FreeTarget = 'o'
-tileToChar OccupiedTarget = '¤'
+tileToChar (Empty False) = '.'
+tileToChar (Empty True) = '*'
+tileToChar (Target False) = 'o'
+tileToChar (Target True) = '¤'
 
 fromString :: String -> Grid
 fromString src = Grid gridArray playerPos
@@ -65,9 +65,12 @@ getStateInfo (Grid a p) = StateInfo (Set.fromList boxPositions) p
       assList = assocs a
       boxPositions = mapMaybe boxFilter assList
           where
-            boxFilter (pos, Box) = Just pos
-            boxFilter (pos, OccupiedTarget) = Just pos
+            boxFilter (pos, Empty True) = Just pos
+            boxFilter (pos, Target True) = Just pos
             boxFilter _ = Nothing
+
+isAccepting :: Grid -> Bool
+isAccepting (Grid gridArray _) = all hasBox $ filter isTarget $ elems gridArray
 
 toGraph :: Grid -> Graph StateInfo Direction
 toGraph grid = buildGraph grid startGraph startId
@@ -80,12 +83,13 @@ toGraph grid = buildGraph grid startGraph startId
             updateGraph (dir, grid) graph =
                 case getId stateInfo graph of
                   Nothing ->
-                      let (newGraph, newStateId) = insertState stateInfo graph
+                      let (newGraph, newStateId) = insertState stateInfo accepting graph
                           newGraph' = insertTransition dir (currentId, newStateId) newGraph
                       in buildGraph grid newGraph' newStateId 
                   Just id -> insertTransition dir (currentId, id) graph
                 where
                   stateInfo = getStateInfo grid
+                  accepting = isAccepting grid
 
 nextGrids :: Grid -> [(Direction, Grid)]
 nextGrids grid = mapMaybe (\dir -> move dir grid >>= \x -> return (dir, x)) [minBound .. maxBound] -- try all directions
@@ -95,28 +99,21 @@ move dir (Grid gridArray pos) = do
   let newPos = posAdd pos $ dirDelta dir
   tile <- getTile newPos gridArray
   case tile of
-    Empty -> Just $ Grid gridArray newPos
     Solid -> Nothing
-    Box ->
-        do
-          newGridArray <- moveBox newPos gridArray
-          Just $ Grid newGridArray newPos
-    FreeTarget -> Just $ Grid gridArray newPos
-    OccupiedTarget ->
-        do
-          newGridArray <- moveBox newPos gridArray
-          Just $ Grid newGridArray newPos
+    _ | hasBox tile ->
+          do
+            newGridArray <- moveBox newPos gridArray
+            Just $ Grid newGridArray newPos
+      | otherwise -> Just $ Grid gridArray newPos
     where
       moveBox pos gridArray =
           do
             let newPos = posAdd pos $ dirDelta dir
             tile <- getTile newPos gridArray
             case tile of
-              Empty -> Just $ toggleBox newPos $ toggleBox pos gridArray
               Solid -> Nothing
-              Box -> Nothing
-              FreeTarget -> Just $ toggleBox newPos $ toggleBox pos gridArray
-              OccupiedTarget -> Nothing
+              _ | hasBox tile -> Nothing
+                | otherwise -> Just $ toggleBox newPos $ toggleBox pos gridArray
   
 toggleBox :: Pos -> Array Pos Tile -> Array Pos Tile
 toggleBox pos gridArray =
@@ -124,11 +121,18 @@ toggleBox pos gridArray =
       Nothing -> gridArray
       Just tile -> gridArray // [(pos, newTile tile)]
     where
-      newTile Empty = Box
       newTile Solid = Solid
-      newTile Box = Empty
-      newTile FreeTarget = OccupiedTarget
-      newTile OccupiedTarget = FreeTarget
+      newTile (Empty x) = Empty (not x)
+      newTile (Target x) = Target (not x)
+
+hasBox :: Tile -> Bool
+hasBox Solid = False
+hasBox (Empty x) = x
+hasBox (Target x) = x
+
+isTarget :: Tile -> Bool
+isTarget (Target _) = True
+isTarget _ = False
 
 isLegal :: Direction -> Grid -> Bool
 isLegal dir grid = isJust $ move dir grid 

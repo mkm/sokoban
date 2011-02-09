@@ -40,9 +40,11 @@ getStates (Graph states _ _ _ _) = states
 getId :: (Eq a) => a -> Graph a b -> Maybe Id
 getId x graph = (find ((x ==) . getStateData) . getStates) graph >>= return . getStateId
 
-insertState :: a -> Graph a b -> (Graph a b, Id)
-insertState x (Graph states transitions startingId acceptingIds (id:ids)) =
-    (Graph (State id x : states) transitions startingId acceptingIds ids, id)
+insertState :: a -> Bool -> Graph a b -> (Graph a b, Id)
+insertState x accepting (Graph states transitions startingId acceptingIds (id:ids)) =
+    (Graph (State id x : states) transitions startingId acceptingIds' ids, id)
+    where
+      acceptingIds' = if accepting then id : acceptingIds else acceptingIds
 
 insertTransition :: b -> (Id, Id) -> Graph a b -> Graph a b
 insertTransition x idPair (Graph states transitions startingId acceptingIds ids) =
