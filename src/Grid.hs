@@ -73,15 +73,19 @@ toGraph :: Grid -> Graph StateInfo Direction
 toGraph grid = buildGraph grid startGraph startId
     where
       (startGraph, startId) = Graph.new $ getStateInfo grid
-      buildGraph grid graph currentId = undefined
+      buildGraph grid graph currentId = foldr updateGraph graph newGrids
           where
-            newGrids = filter (not . flip containsData graph . getStateInfo . snd) $ nextGrids grid
-            (newGraph, newIdsWithDirs) = undefined --foldr folder graph newGrids
-            folder (dir, grid) (accGraph, accIds) =
-                case Graph.insertState (getStateInfo grid) accGraph of
-                  (accGraph', id) -> (accGraph', (id, dir) : accIds)
-            -- todo: generate transitions, clean up stuff and make things work.
-
+            newGrids = nextGrids grid
+            updateGraph :: (Direction, Grid) -> Graph StateInfo Direction -> Graph StateInfo Direction
+            updateGraph (dir, grid) graph =
+                case getId stateInfo graph of
+                  Nothing ->
+                      let (newGraph, newStateId) = insertState stateInfo graph
+                          newGraph' = insertTransition dir (currentId, newStateId) newGraph
+                      in buildGraph grid newGraph' newStateId 
+                  Just id -> insertTransition dir (currentId, id) graph
+                where
+                  stateInfo = getStateInfo grid
 
 nextGrids :: Grid -> [(Direction, Grid)]
 nextGrids grid = mapMaybe (\dir -> move dir grid >>= \x -> return (dir, x)) [minBound .. maxBound] -- try all directions

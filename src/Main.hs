@@ -3,11 +3,13 @@ module Main where
 import Prelude hiding (Left, Right)
 import System (getArgs)
 import Grid
+import Graph
 
 main = do
   (fileName:_) <- getArgs
   input <- readFile fileName
   let grid = Grid.fromString input
+  print $ toGraph grid
   loop grid
 
 loop grid = do
