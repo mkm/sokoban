@@ -89,7 +89,7 @@ toGraph grid = buildGraph grid startGraph startId
                   Just id -> insertTransition dir (currentId, id) graph
                 where
                   stateInfo = getStateInfo grid
-                  accepting = isAccepting grid
+                  accepting = Grid.isAccepting grid
 
 nextGrids :: Grid -> [(Direction, Grid)]
 nextGrids grid = mapMaybe (\dir -> move dir grid >>= \x -> return (dir, x)) [minBound .. maxBound] -- try all directions

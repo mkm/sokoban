@@ -4,17 +4,18 @@ import Prelude hiding (Left, Right)
 import System (getArgs)
 import Grid
 import Graph
+import Solver
 
 main = do
   (fileName:_) <- getArgs
   input <- readFile fileName
   let grid = Grid.fromString input
-  print $ toGraph grid
+  print $ solve grid
   loop grid
 
 loop grid = do
   printGrid grid
-  case isAccepting grid of
+  case Grid.isAccepting grid of
     False ->
         do
           dir <- getAction

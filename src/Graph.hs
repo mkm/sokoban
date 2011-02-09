@@ -3,7 +3,7 @@ module Graph where
 import Data.List (find)
 
 newtype Id = Id Int
-    deriving (Enum, Show)
+    deriving (Enum, Show, Eq, Ord)
 
 data State a = State Id a
                deriving (Show)
@@ -37,6 +37,15 @@ getStateId (State id _) = id
 getStates :: Graph a b -> [State a]
 getStates (Graph states _ _ _ _) = states
 
+getTransitions :: Graph a b -> [Transition b]
+getTransitions (Graph _ transitions _ _ _) = transitions
+
+getSource :: Transition b -> Id
+getSource (Transition (id, _) _) = id
+
+getDestination :: Transition b -> Id
+getDestination (Transition (_, id) _) = id
+
 getId :: (Eq a) => a -> Graph a b -> Maybe Id
 getId x graph = (find ((x ==) . getStateData) . getStates) graph >>= return . getStateId
 
@@ -50,3 +59,11 @@ insertTransition :: b -> (Id, Id) -> Graph a b -> Graph a b
 insertTransition x idPair (Graph states transitions startingId acceptingIds ids) =
     Graph states (Transition idPair x : transitions) startingId acceptingIds ids
 
+isAccepting :: Id -> Graph a b -> Bool
+isAccepting id (Graph _ _ _ acceptingIds _) = id `elem` acceptingIds
+
+getStartingState :: Graph a b -> Id
+getStartingState (Graph _ _ startingId _ _) = startingId
+
+transitions :: Id -> Graph a b -> [(Id, b)]
+transitions id = map (\(Transition (_, dest) dir) -> (dest, dir)) . filter ((id ==) . getSource) . getTransitions
