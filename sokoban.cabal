@@ -48,8 +48,8 @@ Executable sokoban
   Main-is: Main.hs             
   Hs-source-dirs: src  
   -- Packages needed in order to build this package.
-  Build-depends: base >= 4, array, haskell98      
-  Ghc-options: -fglasgow-exts
+  Build-depends: base >= 4, array, haskell98, containers
+  Ghc-options: -fglasgow-exts -prof -auto-all
   -- Modules not exported by this package.
   -- Other-modules:       
   

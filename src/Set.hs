@@ -12,6 +12,9 @@ instance (Ord a) => Eq (Set a) where
 empty :: (Ord a) => Set a
 empty = Set []
 
+singleton :: (Ord a) => a -> Set a
+singleton e = Set.insert e empty
+
 insert :: (Ord a) => a -> Set a -> Set a
 insert e (Set []) = Set [e]
 insert e (Set (x:xs)) =
@@ -29,6 +32,9 @@ elem e (Set (x:xs))
 
 fromList :: (Ord a) => [a] -> Set a
 fromList = foldr insert empty
+
+toList :: (Ord a) => Set a -> [a]
+toList (Set list) = list
 
 subset :: (Ord a) => Set a -> Set a -> Bool
 (Set xs) `subset` b = all (`elem` b) xs
