@@ -1,40 +1,29 @@
 module Set where
 
 import Prelude hiding (elem)
+import Data.Maybe (isJust)
+import Tree
 
-data (Ord a) => Set a = Set [a]
-                        deriving (Show)
+data (Ord a) => Set a = Set (Tree a a)
+    deriving (Show)
 
 instance (Ord a) => Eq (Set a) where
-    a == b = a `subset` b && b `subset` a
---    Set a == Set b = a == b
+    Set a == Set b = Tree.toList a == Tree.toList b
 
 empty :: (Ord a) => Set a
-empty = Set []
+empty = Set Tree.empty
 
 singleton :: (Ord a) => a -> Set a
-singleton e = Set.insert e empty
+singleton e = Set.insert e Set.empty
 
 insert :: (Ord a) => a -> Set a -> Set a
-insert e (Set []) = Set [e]
-insert e (Set (x:xs)) =
-    case compare e x of
-      LT -> Set (e : x : xs)
-      EQ -> Set (x : xs)
-      GT -> Set (x : ys)
-          where (Set ys) = insert e (Set xs)
+insert e (Set tree) = Set $ insertOrModify e e id tree
 
 elem :: (Ord a) => a -> Set a -> Bool
-elem e (Set []) = False
-elem e (Set (x:xs))
-     | e == x = True
-     | otherwise = elem e (Set xs)
+elem e (Set tree) = isJust $ Tree.lookup e tree
 
 fromList :: (Ord a) => [a] -> Set a
-fromList = foldr insert empty
+fromList = foldr insert Set.empty
 
 toList :: (Ord a) => Set a -> [a]
-toList (Set list) = list
-
-subset :: (Ord a) => Set a -> Set a -> Bool
-(Set xs) `subset` b = all (`elem` b) xs
+toList (Set tree) = Tree.toValueList tree

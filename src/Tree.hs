@@ -1,54 +1,53 @@
 module Tree where
 
-import Data.Map as Map hiding (update)
+import Prelude hiding (lookup)
 
-type Tree a b = Map.Map a b
-
-data (Ord a) => OldTree a b = Leaf | Branch (OldTree a b) a b (OldTree a b)
+data (Ord a) => Tree a b = Leaf | Branch !(Tree a b) a b !(Tree a b)
                            deriving (Show)
 
-empty = Map.empty
+empty :: (Ord a) => Tree a b
+empty = Leaf
 
-_empty :: (Ord a) => OldTree a b
-_empty = Leaf
+isEmpty :: (Ord a) => Tree a b -> Bool
+isEmpty Leaf = True
+isEmpty _ = False
 
-
-insertOrModify k v f = alter g k
+insertOrModify :: (Ord a) => a -> b -> (b -> b) -> Tree a b -> Tree a b
+insertOrModify k v f =  update k updater
     where
-      g Nothing = Just v
-      g (Just v) = Just (f v)
+      updater Nothing = Just v
+      updater (Just v) = Just $ f v
 
-_insertOrModify :: (Ord a) => a -> b -> (b -> b) -> OldTree a b -> OldTree a b
-_insertOrModify k v f = fst . update k updater
-    where
-      updater Nothing = (Just v, ())
-      updater (Just v) = (Just (f v), ())
+lookup :: (Ord a) => a -> Tree a b -> Maybe b
+lookup _ Leaf = Nothing
+lookup k1 (Branch l k2 v r) =
+    case compare k1 k2 of
+      LT -> lookup k1 l
+      EQ -> Just v
+      GT -> lookup k1 r
 
-lookup a b = Map.lookup a b
-
-_lookup :: (Ord a) => a -> OldTree a b -> Maybe b
-_lookup k = snd . update k updater
-    where
-      updater x = (x, x)
-
-update :: (Ord a) => a -> (Maybe b -> (Maybe b, c)) -> OldTree a b -> (OldTree a b, c)
+update :: (Ord a) => a -> (Maybe b -> Maybe b) -> Tree a b -> Tree a b
 update k f Leaf =
     case f Nothing of
-      (Nothing, x) -> (Leaf, x)
-      (Just v, x) -> (Branch Leaf k v Leaf, x)
+      Nothing -> Leaf
+      Just v -> Branch Leaf k v Leaf
 update k1 f (Branch left k2 v right) =
     case compare k1 k2 of
-      LT -> let (left', x) = update k1 f left
-            in (Branch left' k2 v right, x)
+      LT -> Branch (update k1 f left) k2 v right
       EQ -> case f (Just v) of
-              (Nothing, x) -> (mergeBranches left right, x)
-              (Just v', x) -> (Branch left k2 v' right, x)
-      GT -> let (right', x) = update k1 f right
-            in (Branch left k2 v right', x)
+              Nothing -> mergeBranches left right
+              Just v' -> Branch left k2 v' right
+      GT -> Branch left k2 v (update k1 f right)
 
-mergeBranches :: (Ord a) => OldTree a b -> OldTree a b -> OldTree a b
+mergeBranches :: (Ord a) => Tree a b -> Tree a b -> Tree a b
 mergeBranches Leaf r = r
 mergeBranches l Leaf = l
 mergeBranches (Branch ll lK lV Leaf) r = Branch ll lK lV r
 mergeBranches (Branch ll lK lV (Branch lrl lrK lrV lrr)) r = Branch (Branch ll lK lV (mergeBranches lrl lrr)) lrK lrV r
 
+toList :: (Ord a) => Tree a b -> [(a, b)]
+toList Leaf = []
+toList (Branch l k v r) = toList l ++ [(k, v)] ++ toList r
+
+toValueList :: (Ord a) => Tree a b -> [b]
+toValueList = map snd . toList
