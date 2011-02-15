@@ -47,17 +47,17 @@ fromString src = Grid gridArray playerPos
       colCount = length $ head srcLines
       charPairs = zip [(x, y) | y <- [1 .. rowCount], x <- [1 .. colCount]] $ concat srcLines
       playerPos = fst $ fromJust $ find (('$' ==) . snd) charPairs
-      tilePairs = map (\(i, c) -> (i, charToTile c)) charPairs
+      tilePairs = Prelude.map (\(i, c) -> (i, charToTile c)) charPairs
       gridArray = array ((1, 1), (colCount, rowCount)) tilePairs
 
 toString :: Grid -> String
 toString (Grid gridArray pos) = unlines chars
     where
       tilePairs = assocs gridArray
-      charPairs = map (\(i, t) -> (i, tileToChar t)) tilePairs
+      charPairs = Prelude.map (\(i, t) -> (i, tileToChar t)) tilePairs
       charPairsWithPlayer = applyWhere ((pos ==) . fst) (\(pos', _) -> (pos', '$')) charPairs
       srcLines = findGroups (\((_, y1), _) ((_, y2), _) -> y1 == y2) charPairsWithPlayer
-      chars = map (map snd) $ sortBy (\(((_, y1), _):_) (((_, y2), _):_) -> compare y1 y2) srcLines
+      chars = Prelude.map (Prelude.map snd) $ sortBy (\(((_, y1), _):_) (((_, y2), _):_) -> compare y1 y2) srcLines
 
 getStateInfo :: Grid -> StateInfo
 getStateInfo (Grid a p) = StateInfo (Set.fromList boxPositions) p

@@ -26,6 +26,12 @@ lookup k1 (Branch l k2 v r) =
       EQ -> Just v
       GT -> lookup k1 r
 
+lookupDefault :: (Ord a) => a -> b -> Tree a b -> b
+lookupDefault k def tree =
+    case lookup k tree of
+      Nothing -> def
+      Just v -> v
+
 update :: (Ord a) => a -> (Maybe b -> Maybe b) -> Tree a b -> Tree a b
 update k f Leaf =
     case f Nothing of
@@ -50,4 +56,10 @@ toList Leaf = []
 toList (Branch l k v r) = toList l ++ [(k, v)] ++ toList r
 
 toValueList :: (Ord a) => Tree a b -> [b]
-toValueList = map snd . toList
+toValueList = Prelude.map snd . toList
+
+fromList :: (Ord a) => [(a, b)] -> Tree a b
+fromList = foldr (\(k, v) tree -> insertOrModify k v (const v) tree) Tree.empty
+
+map :: (Ord a, Ord c) => ((a, b) -> (c, d)) -> Tree a b -> Tree c d
+map f = fromList . Prelude.map f . toList

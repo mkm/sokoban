@@ -27,3 +27,6 @@ fromList = foldr insert Set.empty
 
 toList :: (Ord a) => Set a -> [a]
 toList (Set tree) = Tree.toValueList tree
+
+map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
+map f (Set tree) = Set $ Tree.map (\(k, _) -> let k' = f k in (k', k')) tree
