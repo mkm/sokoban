@@ -12,3 +12,6 @@ remove :: Queue a -> Maybe (a, Queue a)
 remove (Queue [] []) = Nothing
 remove (Queue [] ys) = remove $ Queue (reverse ys) []
 remove (Queue (x:xs) ys) = Just (x, Queue xs ys)
+
+fromList :: [a] -> Queue a
+fromList = foldr insert empty

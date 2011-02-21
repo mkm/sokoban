@@ -10,7 +10,7 @@ main = do
   (fileName:_) <- getArgs
   input <- readFile fileName
   let grid = Grid.fromString input
-  print $ solve grid
+  print $ newSolve grid
   loop grid
 
 loop grid = do

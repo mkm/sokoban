@@ -29,3 +29,6 @@ lookupFst k (Relation tree _) = Tree.lookupDefault k Set.empty tree
 
 lookupSnd :: (Ord a, Ord b) => b -> Relation a b c -> Set (RelPair a c)
 lookupSnd k (Relation _ tree) = Tree.lookupDefault k Set.empty tree
+
+unpackRelPair :: RelPair a b -> (a, b)
+unpackRelPair (RelPair pair) = pair

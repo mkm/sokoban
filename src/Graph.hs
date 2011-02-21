@@ -40,6 +40,12 @@ getStates (Graph states _ _ _ _) = states
 getTransitions :: Graph a b -> Relation Id Id b
 getTransitions (Graph _ transitions _ _ _) = transitions
 
+getStartingState :: Graph a b -> StartingStateId
+getStartingState (Graph _ _ startingId _ _) = startingId
+
+getAcceptingStates :: Graph a b -> [AcceptingStateId]
+getAcceptingStates (Graph _ _ _ acceptingIds _) = acceptingIds
+
 getId :: (Eq a) => a -> Graph a b -> Maybe Id
 getId x graph = (find ((x ==) . getStateData) . getStates) graph >>= return . getStateId
 
@@ -55,9 +61,6 @@ insertTransition x (src, dst) (Graph states transitions startingId acceptingIds 
 
 isAccepting :: Id -> Graph a b -> Bool
 isAccepting id (Graph _ _ _ acceptingIds _) = Prelude.elem id acceptingIds
-
-getStartingState :: Graph a b -> Id
-getStartingState (Graph _ _ startingId _ _) = startingId
 
 transitionsFrom :: Id -> Graph a b -> Set (RelPair Id b)
 transitionsFrom id graph = Relation.lookupFst id (getTransitions graph)
@@ -75,7 +78,10 @@ modifyState id f (Graph states transitions startingId acceptingIds ids) =
     where
       modifyOccurence [] = Nothing
       modifyOccurence (state@(State id' x):states)
-          | id == id' = Just $ State id' ((f `seq` undefined) x) : states
+          | id == id' =
+              case f x of
+                Nothing -> Nothing
+                Just x' -> Just $ (State id' x') : states
           | otherwise = liftM (state :) (modifyOccurence states)
       (modified, states') =
           case modifyOccurence states of
